@@ -4,31 +4,49 @@ from pathlib import Path
 
 from app.models import Finding
 
+# Initialize EasyOCR reader outside the function so it loads once globally
+try:
+    import easyocr
+    reader = easyocr.Reader(['en'], gpu=False)  # Explicitly disable GPU for free tier servers
+except ImportError:
+    reader = None
+
 
 def ocr_image(path: Path) -> tuple[str, list[Finding]]:
     findings: list[Finding] = []
-    try:
-        from PIL import Image, ImageOps
-        import pytesseract
-    except ImportError:
+    
+    if reader is None:
         findings.append(
             Finding(
                 id="ocr-unavailable",
                 title="OCR libraries are not installed",
                 severity="info",
                 score_points=0,
-                explanation="Could not run screenshot reading because Python OCR packages are missing.",
+                explanation="Could not run screenshot reading because Python easyocr packages are missing or failed to import.",
                 category="ocr",
             )
         )
         return "", findings
 
     try:
+        from PIL import Image, ImageOps
+        import numpy as np
+        
+        # Load and fix image orientation
         image = Image.open(path)
         image = ImageOps.exif_transpose(image)
         if image.mode not in {"RGB", "L"}:
             image = image.convert("RGB")
-        text = pytesseract.image_to_string(image) or ""
+            
+        # Convert PIL image to an array EasyOCR can read
+        image_np = np.array(image)
+        
+        # Execute OCR scan
+        results = reader.readtext(image_np)
+        
+        # Combine all extracted lines into a clean string layout
+        text = " ".join([item[1] for item in results]) or ""
+        
         if not text.strip():
             findings.append(
                 Finding(
@@ -44,21 +62,6 @@ def ocr_image(path: Path) -> tuple[str, list[Finding]]:
                 )
             )
         return text, findings
-    except pytesseract.TesseractNotFoundError:
-        findings.append(
-            Finding(
-                id="ocr-tesseract-missing",
-                title="Could not run screenshot OCR",
-                severity="info",
-                score_points=0,
-                explanation=(
-                    "Tesseract is not installed on this computer. Paste the message text, or install "
-                    "Tesseract and try the screenshot again. We did not invent any OCR results."
-                ),
-                category="ocr",
-            )
-        )
-        return "", findings
     except Exception as exc:
         findings.append(
             Finding(
@@ -89,8 +92,8 @@ def extract_pdf_text(path: Path) -> tuple[str, list[Finding]]:
             )
         ]
     try:
-        reader = PdfReader(str(path))
-        if getattr(reader, "is_encrypted", False):
+        reader_pdf = PdfReader(str(path))
+        if getattr(reader_pdf, "is_encrypted", False):
             findings.append(
                 Finding(
                     id="pdf-encrypted",
@@ -107,7 +110,7 @@ def extract_pdf_text(path: Path) -> tuple[str, list[Finding]]:
             )
             return "", findings
         chunks: list[str] = []
-        for page in reader.pages[:15]:
+        for page in reader_pdf.pages[:15]:
             chunks.append(page.extract_text() or "")
         return "\n".join(chunks), findings
     except Exception as exc:

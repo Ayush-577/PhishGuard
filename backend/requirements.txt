@@ -10,3 +10,4 @@ pytesseract>=0.3.13
 pypdf>=4.0
 # Outlook .msg support (optional)
 extract-msg>=0.28
+easyocr
