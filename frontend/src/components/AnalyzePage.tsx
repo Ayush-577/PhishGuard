@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { analyzeFile, analyzeSample, analyzeText, fetchSamples } from "../api";
 import type { AnalysisReport, Sample } from "../types";
 import { ReportView } from "./ReportView";
@@ -6,10 +6,10 @@ import { ReportView } from "./ReportView";
 const ALLOWED = [".eml", ".msg", ".txt", ".pdf", ".png", ".jpg", ".jpeg"];
 const MAX = 10 * 1024 * 1024;
 
-function formatBytes(n: number) {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 export function AnalyzePage() {
@@ -20,30 +20,29 @@ export function AnalyzePage() {
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [samples, setSamples] = useState<Sample[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchSamples().then(setSamples).catch(() => setSamples([]));
   }, []);
-
-  const fileLabel = useMemo(() => {
-    if (!file) return null;
-    return `${file.name} · ${formatBytes(file.size)}`;
-  }, [file]);
 
   function accept(next: File | null) {
     setError(null);
     setReport(null);
     if (!next) {
       setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     const ext = "." + next.name.split(".").pop()?.toLowerCase();
     if (!ALLOWED.includes(ext)) {
       setError("Use .eml, .msg, .txt, .pdf, PNG or JPG.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     if (next.size > MAX) {
       setError("File is larger than 10 MB.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     setFile(next);
@@ -67,6 +66,7 @@ export function AnalyzePage() {
     setError(null);
     setBusy(true);
     setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     try {
       const preview = samples.find((item) => item.id === id);
       if (preview) setText(preview.text);
@@ -94,8 +94,8 @@ export function AnalyzePage() {
       </div>
 
       <form className="card" onSubmit={onSubmit}>
-        <label
-          className={`drop ${over ? "over" : ""}`}
+        <div
+          className={`dropzone ${over ? "over" : ""} ${file ? "has-file" : ""}`}
           onDragOver={(e) => {
             e.preventDefault();
             setOver(true);
@@ -108,21 +108,74 @@ export function AnalyzePage() {
           }}
         >
           <input
+            ref={fileInputRef}
+            id="file-input"
             type="file"
+            className="dropzone-input"
             accept=".eml,.msg,.txt,.pdf,.png,.jpg,.jpeg,image/png,image/jpeg"
             onChange={(e) => accept(e.target.files?.[0] ?? null)}
           />
-          <strong>Drop a suspicious item</strong>
-          <p className="meta">.eml, .msg, .txt, .pdf, PNG or JPG · max 10 MB</p>
-        </label>
-        {file && (
-          <div className="file-chip">
-            <span>{fileLabel}</span>
-            <button type="button" className="btn btn-ghost" onClick={() => accept(null)}>
-              Remove file
-            </button>
-          </div>
-        )}
+
+          {!file ? (
+            <label htmlFor="file-input" className="dropzone-prompt">
+              <svg
+                className="dropzone-icon"
+                width="36"
+                height="36"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <strong className="dropzone-title">Drop a suspicious item here or browse</strong>
+              <span className="btn dropzone-btn">Browse files</span>
+              <p className="dropzone-help">.eml, .msg, .txt, .pdf, PNG or JPG · max 10 MB</p>
+            </label>
+          ) : (
+            <div className="dropzone-file">
+              <svg
+                className="dropzone-file-icon"
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              <div className="dropzone-file-meta">
+                <span className="dropzone-filename">{file.name}</span>
+                <span className="dropzone-filesize">{formatBytes(file.size)}</span>
+              </div>
+              <button
+                type="button"
+                className="dropzone-remove-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  accept(null);
+                }}
+                aria-label="Remove file"
+                title="Remove file"
+              >
+                &times;
+              </button>
+            </div>
+          )}
+        </div>
 
         <div style={{ marginTop: 16 }}>
           <label className="block" htmlFor="paste">
