@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+frontend/dist/
+
+# Uploads / OS
+uploads/
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

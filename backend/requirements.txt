@@ -1,0 +1,12 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+python-dotenv>=1.0
+httpx>=0.27
+# Screenshot OCR (optional — remove the Python <3.14 pin if you use 3.11–3.13)
+pillow>=10.0
+pytesseract>=0.3.13
+# PDF text extraction (optional)
+pypdf>=4.0
+# Outlook .msg support (optional)
+extract-msg>=0.28

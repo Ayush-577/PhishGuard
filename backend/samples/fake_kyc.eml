@@ -1,0 +1,14 @@
+From: "SBI Bank Security" <alert@sbi-secure-update.com>
+To: customer@example.in
+Subject: Urgent: KYC update required
+Date: Mon, 19 Oct 2026 09:14:00 +0530
+Authentication-Results: mx.example.com; spf=softfail smtp.mailfrom=alert@sbi-secure-update.com; dmarc=fail header.from=sbi.co.in
+Return-Path: bounce@mailer-7742.xyz
+
+Dear Customer,
+
+Your SBI account will be BLOCKED within 24 hours due to incomplete KYC.
+Update your KYC immediately: http://sbi-kyc-verify.xyz/login
+Enter the OTP we just sent to complete verification.
+
+SBI Bank
